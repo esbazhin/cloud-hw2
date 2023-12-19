@@ -1,0 +1,23 @@
+services:
+  hw2:
+    build: .
+    ports:
+      - 127.0.0.1:3000:3000
+    working_dir: /app
+    volumes:
+      - ./:/app
+    environment:
+      PGHOST: postgres_db
+      PGUSER: postgres
+      PGDATABASE: todos
+
+  postgres_db:
+    image: postgres
+    volumes:
+      - todo-postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_DB: todos
+
+volumes:
+  todo-postgres-data:
