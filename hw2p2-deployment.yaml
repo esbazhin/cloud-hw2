@@ -1,0 +1,110 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: hw2p2-pv1
+spec:
+  storageClassName: hw2p2-pv-storage
+  capacity:
+    storage: 50Mi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  nfs:
+    path: /tmp
+    server: 172.17.0.2
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hw2p2-pvc1
+spec:
+  storageClassName: hw2p2-pv-storage
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Mi
+  volumeMode: Filesystem
+
+---
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hw2p2-postgres-db
+  labels:
+    name: hw2p2-postgres-db
+spec:
+  volumes:
+  - name: hw2p2-db-storage
+    persistentVolumeClaim:
+     claimName: hw2p2-pvc1
+  containers:
+  - name: hw2p2-postgres-db
+    image: postgres
+    resources:
+      limits:
+        memory: "128Mi"
+        cpu: "500m"
+    ports:
+      - containerPort: 5432
+        name: postgres-tport
+    volumeMounts:
+    - mountPath: "/var/lib/postgresql/data"
+      name: hw2p2-db-storage
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: hw2p2-db-service
+spec:
+  selector:
+    app: hw2p2-postgres-db
+  type: ClusterIP
+  ports:
+  - name: postgres-port
+    protocol: TCP
+    port: 5432
+    targetPort: postgres-tport
+
+---
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hw2p2-todo-app
+  labels:
+    name: hw2p2-todo-app
+spec:
+  containers:
+  - name: hw2p2-todo-app
+    image: estar1337/hw2p2
+    env:
+    - name: PGHOST
+      value: hw2p2-db-service
+    resources:
+      limits:
+        memory: "128Mi"
+        cpu: "500m"
+    ports:
+      - containerPort: 3000
+        name: todo-app-tport
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: hw2p2-load-balancer-service
+spec:
+  selector:
+    app: hw2p2-todo-app
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: todo-app-tport
+
