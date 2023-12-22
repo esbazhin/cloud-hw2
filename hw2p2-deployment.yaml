@@ -1,32 +1,30 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: hw2p2-pv1
+  name: hw2p2-pv
 spec:
-  storageClassName: hw2p2-pv-storage
+  storageClassName: ""
   capacity:
-    storage: 50Mi
-  volumeMode: Filesystem
+    storage: 100Mi
   accessModes:
     - ReadWriteOnce
-  nfs:
-    path: /tmp
-    server: 172.17.0.2
+  hostPath:
+    path: /data
 
 ---
 
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: hw2p2-pvc1
+  name: hw2p2-pvc
 spec:
-  storageClassName: hw2p2-pv-storage
+  storageClassName: ""
+  volumeName: hw2p2-pv
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 20Mi
-  volumeMode: Filesystem
+      storage: 30Mi
 
 ---
 
@@ -38,12 +36,15 @@ metadata:
     name: hw2p2-postgres-db
 spec:
   volumes:
-  - name: hw2p2-db-storage
+  - name: hw2p2-db-vol
     persistentVolumeClaim:
-     claimName: hw2p2-pvc1
+     claimName: hw2p2-pvc
   containers:
   - name: hw2p2-postgres-db
     image: postgres
+    env:
+    - name: POSTGRES_HOST_AUTH_METHOD
+      value: trust
     resources:
       limits:
         memory: "128Mi"
@@ -53,7 +54,7 @@ spec:
         name: postgres-tport
     volumeMounts:
     - mountPath: "/var/lib/postgresql/data"
-      name: hw2p2-db-storage
+      name: hw2p2-db-vol
 
 ---
 
@@ -63,7 +64,7 @@ metadata:
   name: hw2p2-db-service
 spec:
   selector:
-    app: hw2p2-postgres-db
+    name: hw2p2-postgres-db
   type: ClusterIP
   ports:
   - name: postgres-port
@@ -86,6 +87,10 @@ spec:
     env:
     - name: PGHOST
       value: hw2p2-db-service
+    - name: PGUSER
+      value: postgres
+    - name: PGDATABASE
+      value: postgres
     resources:
       limits:
         memory: "128Mi"
@@ -102,7 +107,7 @@ metadata:
   name: hw2p2-load-balancer-service
 spec:
   selector:
-    app: hw2p2-todo-app
+    name: hw2p2-todo-app
   type: LoadBalancer
   ports:
   - port: 80
